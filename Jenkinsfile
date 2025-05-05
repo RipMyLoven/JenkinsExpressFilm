@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "movie-express-app"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
+        CONTAINER_NAME = "movie-app-container"
     }
     
     stages {
@@ -48,8 +49,8 @@ pipeline {
                 echo 'Starting container...'
                 script {
                     try {
-                        sh "docker rm -f movie-app-container || true"
-                        sh "docker run -d -p 3000:3000 --name movie-app-container ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh "docker rm -f ${CONTAINER_NAME} || true"
+                        sh "docker run -d -p 3000:3000 --name ${CONTAINER_NAME} ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     } catch (Exception e) {
                         echo "Error starting container: ${e.message}"
                         throw e
@@ -75,6 +76,16 @@ pipeline {
     }
     
     post {
+        always {
+            echo 'Cleaning up Docker resources...'
+            sh "docker stop ${CONTAINER_NAME} || true"
+            sh "docker rm ${CONTAINER_NAME} || true"
+            
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+            sh "docker rmi ${DOCKER_IMAGE}:latest || true"
+            
+            sh "docker image prune -f || true"
+        }
         success {
             echo 'Build completed successfully!'
         }
